@@ -38,6 +38,9 @@
             <button onclick="triggerBackup()" class="bg-blue-600 hover:bg-blue-700 text-white px-2.5 py-1.5 rounded font-bold flex items-center gap-1 transition-all">
                 <i data-lucide="database-backup" class="w-3.5 h-3.5"></i> 백업
             </button>
+            <button onclick="openGithubSyncModal()" class="bg-slate-700 hover:bg-slate-800 text-white px-2.5 py-1.5 rounded font-bold flex items-center gap-1 transition-all" title="GitHub 저장소에 데이터 저장/불러오기">
+                <i data-lucide="github" class="w-3.5 h-3.5"></i> GitHub
+            </button>
             <label class="bg-indigo-600 hover:bg-indigo-700 text-white px-2.5 py-1.5 rounded font-bold flex items-center gap-1 cursor-pointer transition-all font-sans">
                 <i data-lucide="folder-open" class="w-3.5 h-3.5"></i> 복구
                 <input type="file" id="backupFile" accept=".json" onchange="restoreBackup(event)" class="hidden">
@@ -922,6 +925,60 @@
     </div>
 
     <!-- 커스텀 알림/확인 모달 (alert & confirm 대체) -->
+    <div id="githubSyncModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center z-[95] no-print">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden">
+            <div class="bg-slate-900 text-white px-5 py-3 flex justify-between items-center">
+                <h3 class="font-black text-sm flex items-center gap-2">
+                    <i data-lucide="github" class="w-4 h-4"></i> GitHub 데이터 저장
+                </h3>
+                <button onclick="closeGithubSyncModal()" class="text-slate-300 hover:text-white">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <div class="p-5 space-y-3 text-xs">
+                <div class="bg-amber-50 border border-amber-200 text-amber-800 rounded p-3 leading-relaxed">
+                    GitHub Personal Access Token은 개인 권한입니다. 혼자 쓰는 PC에서만 사용하고, 저장 여부는 신중히 선택하세요.
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block font-bold text-slate-600 mb-1">Owner</label>
+                        <input id="githubOwner" type="text" placeholder="github-id" class="w-full border border-slate-200 rounded p-2 outline-none focus:ring-1 focus:ring-slate-500">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-600 mb-1">Repository</label>
+                        <input id="githubRepo" type="text" placeholder="repo-name" class="w-full border border-slate-200 rounded p-2 outline-none focus:ring-1 focus:ring-slate-500">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block font-bold text-slate-600 mb-1">Branch</label>
+                        <input id="githubBranch" type="text" value="main" class="w-full border border-slate-200 rounded p-2 outline-none focus:ring-1 focus:ring-slate-500">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-600 mb-1">Data Path</label>
+                        <input id="githubPath" type="text" value="data/labor-payment-data.json" class="w-full border border-slate-200 rounded p-2 outline-none focus:ring-1 focus:ring-slate-500">
+                    </div>
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-600 mb-1">Personal Access Token</label>
+                    <input id="githubToken" type="password" placeholder="github_pat_..." class="w-full border border-slate-200 rounded p-2 font-mono outline-none focus:ring-1 focus:ring-slate-500">
+                </div>
+                <label class="flex items-center gap-2 text-slate-600 font-bold">
+                    <input id="githubRememberToken" type="checkbox" class="accent-slate-800">
+                    이 브라우저에 토큰 저장
+                </label>
+                <div class="flex justify-between items-center pt-2 border-t border-slate-100">
+                    <span id="githubSyncStatus" class="text-slate-500 font-semibold"></span>
+                    <div class="flex gap-2">
+                        <button onclick="saveGithubSyncSettings()" class="px-3 py-2 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold">설정 저장</button>
+                        <button onclick="loadFromGithub()" class="px-3 py-2 rounded bg-indigo-600 hover:bg-indigo-700 text-white font-bold">불러오기</button>
+                        <button onclick="saveToGithub()" class="px-3 py-2 rounded bg-slate-900 hover:bg-black text-white font-bold">저장</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div id="customAlertModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center z-[100] no-print">
         <div class="bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-sm overflow-hidden p-5 space-y-4">
             <div class="flex items-center gap-2.5 text-amber-500">
@@ -944,6 +1001,7 @@
     <script src="js/state.js"></script>
     <script src="js/utils.js"></script>
     <script src="js/storage.js"></script>
+    <script src="js/github-sync.js"></script>
     <script src="js/layout.js"></script>
     <script src="js/render.js"></script>
     <script src="js/labor-detail.js"></script>

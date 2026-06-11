@@ -113,6 +113,7 @@ function calculateAndDisplaySummary(rows) {
 
                 // 상단행 (1~16일) — 고정셀 rowspan=2
                 const tr1 = document.createElement('tr');
+                tr1.className = 'pt-pair-row';
                 let r1 = `
                     <td rowspan="2" class="pt-no">${idx + 1}</td>
                     <td rowspan="2" class="pt-name" style="font-weight:900">${labor.name}</td>
@@ -136,6 +137,7 @@ function calculateAndDisplaySummary(rows) {
 
                 // 하단행 (17~31일)
                 const tr2 = document.createElement('tr');
+                tr2.className = 'pt-pair-row';
                 let r2 = '';
                 for (let d = 17; d <= 31; d++) r2 += dayCell(d, labor.attendance, false);
                 tr2.innerHTML = r2;
@@ -146,7 +148,7 @@ function calculateAndDisplaySummary(rows) {
 
             // ── 합계 행 (2행) ──
             const totalTr1 = document.createElement('tr');
-            totalTr1.className = 'total-row';
+            totalTr1.className = 'total-row pt-pair-row';
             let t1 = `<td rowspan="2" colspan="4" style="text-align:right;padding-right:4px;font-size:8px">합 계</td>`;
             for (let d = 1; d <= 16; d++) {
                 const v = d <= daysInMonth && dailyCounts[d] > 0 ? dailyCounts[d] : '';
@@ -167,7 +169,7 @@ function calculateAndDisplaySummary(rows) {
             tbody.appendChild(totalTr1);
 
             const totalTr2 = document.createElement('tr');
-            totalTr2.className = 'total-row';
+            totalTr2.className = 'total-row pt-pair-row';
             let t2 = '';
             for (let d = 17; d <= 31; d++) {
                 const v = d <= daysInMonth && dailyCounts[d] > 0 ? dailyCounts[d] : '';

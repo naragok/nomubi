@@ -13,6 +13,7 @@ responsibility without changing the app behavior.
 - `js/state.js`: Initial state, demo data, and shared state variables.
 - `js/utils.js`: Age, alert, formatter, and input helper utilities.
 - `js/storage.js`: App initialization and localStorage persistence.
+- `js/github-sync.js`: GitHub Personal Access Token based data save/load.
 - `js/layout.js`: Zoom, density, dropdown, and project selection UI.
 - `js/render.js`: Main table rendering and detail modal entry.
 - `js/labor-detail.js`: Worker detail editing, duplication, and related helpers.
@@ -34,3 +35,20 @@ responsibility without changing the app behavior.
 - All 18 JavaScript files pass `node --check`.
 - The original app script exposes 122 named functions; the modularized scripts
   expose the same 122 named functions.
+
+## GitHub Save/Load
+
+Use the `GitHub` button in the top toolbar.
+
+Required settings:
+
+- `Owner`: GitHub account or organization name.
+- `Repository`: Repository name.
+- `Branch`: Usually `main`.
+- `Data Path`: Default is `data/labor-payment-data.json`.
+- `Personal Access Token`: A GitHub token with permission to read/write contents
+  in the target repository.
+
+The token is only saved in this browser when `이 브라우저에 토큰 저장` is checked.
+For safer use, create a fine-grained token scoped only to the target repository
+with Contents read/write permission.

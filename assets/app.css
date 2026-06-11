@@ -50,8 +50,16 @@
                 text-align: center;
                 vertical-align: middle;
                 padding: 1px 0;
+                line-height: 1.05;
                 word-break: keep-all;
                 overflow: hidden;
+            }
+            #printTable tr.pt-pair-row {
+                height: 4.8mm;
+            }
+            #printTable tr.pt-pair-row td,
+            #printTable tr.pt-pair-row th {
+                height: 4.8mm;
             }
             #printTable .pt-name  { width: 14mm; font-weight: 900; }
             #printTable .pt-ssn   { width: 20mm; font-family: monospace; font-size: 6.5px; }
