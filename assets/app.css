@@ -1,0 +1,80 @@
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght=300;400;500;700;900&display=swap');
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #f1f5f9;
+        }
+        /* 스크롤바 디자인 */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        /* 데스크톱 환경에서 스크롤을 제어하여 완벽한 단일 화면 구성 */
+        @media (min-width: 1024px) {
+            .app-container {
+                height: calc(100vh - 56px);
+                overflow: hidden;
+            }
+        }
+        /* 인쇄 전용 CSS */
+        @media print {
+            .no-print { display: none !important; }
+            body { background: white; color: black; }
+            .print-container {
+                width: 100% !important; max-width: 100% !important;
+                padding: 0 !important; margin: 0 !important;
+                box-shadow: none !important;
+            }
+            /* 화면 테이블 숨기고 인쇄 전용 테이블만 표시 */
+            #paymentTable { display: none !important; }
+            #printTable { display: table !important; }
+            @page { size: A4 landscape; margin: 5mm 4mm; }
+
+            #printTable {
+                width: 100%;
+                border-collapse: collapse;
+                font-size: 7.5px;
+                table-layout: fixed;
+            }
+            #printTable th, #printTable td {
+                border: 0.3px solid #374151;
+                text-align: center;
+                vertical-align: middle;
+                padding: 1px 0;
+                word-break: keep-all;
+                overflow: hidden;
+            }
+            #printTable .pt-name  { width: 14mm; font-weight: 900; }
+            #printTable .pt-ssn   { width: 20mm; font-family: monospace; font-size: 6.5px; }
+            #printTable .pt-job   { width: 10mm; }
+            #printTable .pt-day   { width: 5.4mm; }
+            #printTable .pt-days  { width: 7mm; font-weight: 900; }
+            #printTable .pt-price { width: 12mm; font-weight: 900; }
+            #printTable .pt-total { width: 15mm; font-weight: 900; }
+            #printTable .pt-tax   { width: 13mm; }
+            #printTable .pt-ins   { width: 10mm; }
+            #printTable .pt-deduct{ width: 13mm; font-weight: 900; }
+            #printTable .pt-net   { width: 15mm; font-weight: 900; }
+            #printTable .pt-no    { width: 6mm; }
+            #printTable .sun { color: #dc2626; background: #fff5f5; }
+            #printTable .sat { color: #1d4ed8; background: #eff6ff; }
+            #printTable .hdr { background: #e2e8f0; font-weight: 700; }
+            #printTable .total-row { background: #dbeafe; font-weight: 900; }
+            #printTable .empty-day { background: #f1f5f9; }
+        }
+        /* 화면에서는 인쇄 테이블 숨김 */
+        #printTable { display: none; }
+        /* 드래그 범위 선택 하이라이트 */
+        .drag-highlight {
+            background-color: #fed7aa !important;
+            outline: 2px solid #f97316 !important;
+        }

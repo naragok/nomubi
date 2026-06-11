@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>일용노무비 지급명세서 및 근로계약서 시스템 (2026)</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="assets/app.css">
+
+</head>
+<body class="text-slate-800 flex flex-col min-h-screen text-xs">
+
+    <!-- 상단 통합 바 (no-print) -->
+    <header class="bg-slate-900 text-white px-5 py-3 flex justify-between items-center shadow-md h-[56px] shrink-0 no-print">
+        <div class="flex items-center gap-2">
+            <i data-lucide="layout-dashboard" class="text-blue-400 w-5 h-5"></i>
+            <span class="text-sm font-black tracking-tight">일용노무비 & 필수 서류 시스템 (2026)</span>
+        </div>
+        <div class="flex items-center gap-2">
+            <button onclick="openInsuranceReportModal()" class="bg-teal-600 hover:bg-teal-700 text-white px-2.5 py-1.5 rounded font-bold flex items-center gap-1 transition-all" title="8일 이상 근무자 4대보험 취득신고서 출력">
+                <i data-lucide="file-text" class="w-3.5 h-3.5"></i> 보험신고
+            </button>
+            <button onclick="openCarryOverModal()" class="bg-violet-600 hover:bg-violet-700 text-white px-2.5 py-1.5 rounded font-bold flex items-center gap-1 transition-all" title="현재 근로자를 다음달 대장으로 이월">
+                <i data-lucide="calendar-arrow-right" class="w-3.5 h-3.5"></i> 이월
+            </button>
+            <button onclick="copyToClipboardForExcel()" class="bg-slate-700 hover:bg-slate-800 text-white px-2.5 py-1.5 rounded font-bold flex items-center gap-1 transition-all" title="엑셀에 바로 붙여넣기 가능한 규격으로 복사합니다.">
+                <i data-lucide="clipboard-copy" class="w-3.5 h-3.5"></i> 엑셀용 복사
+            </button>
+            <button onclick="exportToCSV()" class="bg-teal-600 hover:bg-teal-700 text-white px-2.5 py-1.5 rounded font-bold flex items-center gap-1 transition-all">
+                <i data-lucide="file-down" class="w-3.5 h-3.5"></i> CSV
+            </button>
+            <button onclick="exportToXLS()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1.5 rounded font-bold flex items-center gap-1 transition-all">
+                <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5"></i> XLS 저장
+            </button>
+            <button onclick="triggerBackup()" class="bg-blue-600 hover:bg-blue-700 text-white px-2.5 py-1.5 rounded font-bold flex items-center gap-1 transition-all">
+                <i data-lucide="database-backup" class="w-3.5 h-3.5"></i> 백업
+            </button>
+            <label class="bg-indigo-600 hover:bg-indigo-700 text-white px-2.5 py-1.5 rounded font-bold flex items-center gap-1 cursor-pointer transition-all font-sans">
+                <i data-lucide="folder-open" class="w-3.5 h-3.5"></i> 복구
+                <input type="file" id="backupFile" accept=".json" onchange="restoreBackup(event)" class="hidden">
+            </label>
+            <button onclick="window.print()" class="bg-slate-700 hover:bg-slate-800 text-white px-2.5 py-1.5 rounded font-bold flex items-center gap-1 transition-all">
+                <i data-lucide="printer" class="w-3.5 h-3.5"></i> 대장인쇄
+            </button>
+        </div>
+    </header>
+
+    <!-- 대시보드 뷰어 레이아웃 -->
+    <div class="app-container flex flex-col lg:flex-row gap-3 p-3 flex-1 overflow-hidden">
+        
+        <!-- 좌측 조작반 (no-print) -->
+        <aside class="w-full lg:w-[340px] shrink-0 flex flex-col gap-3 no-print h-full overflow-y-auto pr-1">
+            
+            <!-- 1. 현장 대장 선택 -->
+            <div class="bg-white p-3.5 rounded-xl shadow-sm border border-slate-200">
+                <div class="flex items-center justify-between mb-2">
+                    <h2 class="text-xs font-black text-slate-900 flex items-center gap-1.5 uppercase tracking-wider">
+                        <i data-lucide="building-2" class="text-blue-500 w-4 h-4"></i>
+                        현장 대장 선택
+                    </h2>
+                    <div class="flex gap-1">
+                        <button onclick="openNewProjectModal()" class="text-[10px] bg-blue-50 text-blue-600 hover:bg-blue-100 font-bold px-2 py-0.5 rounded transition-all">
+                            + 신규 등록
+                        </button>
+                        <button onclick="openEditProjectModal()" class="text-[10px] bg-amber-50 text-amber-600 hover:bg-amber-100 font-bold px-2 py-0.5 rounded transition-all">
+                            ✏️ 수정
+                        </button>
+                    </div>
+                </div>
+                <div class="space-y-1.5">
+                    <select id="selectCompany" onchange="onCompanyOrPeriodChange('company')" class="w-full bg-slate-50 border border-slate-200 rounded p-1.5 font-bold focus:ring-1 focus:ring-blue-500 outline-none"></select>
+                    <select id="selectPeriod" onchange="onCompanyOrPeriodChange('period')" class="w-full bg-slate-50 border border-slate-200 rounded p-1.5 font-bold focus:ring-1 focus:ring-blue-500 outline-none"></select>
+                    <select id="selectProject" onchange="onProjectChange()" class="w-full bg-slate-50 border border-slate-200 rounded p-1.5 font-bold focus:ring-1 focus:ring-blue-500 outline-none"></select>
+                </div>
+            </div>
+
+            <!-- 2. 신규 근로자 등록 -->
+            <div class="bg-white p-3.5 rounded-xl shadow-sm border border-slate-200">
+                <div class="flex items-center justify-between mb-2.5">
+                    <h2 class="text-xs font-black text-slate-900 flex items-center gap-1.5 uppercase tracking-wider">
+                        <i data-lucide="user-plus" class="text-blue-500 w-4 h-4"></i>
+                        근로자 등록
+                    </h2>
+                    <div class="flex gap-1">
+                        <button onclick="openBulkUserModal()" class="text-[10px] bg-purple-50 text-purple-600 hover:bg-purple-100 font-bold px-2 py-0.5 rounded transition-all">
+                            ⚡ 복수 일괄 추가
+                        </button>
+                        <button onclick="openAiScanModal()" class="text-[10px] bg-emerald-50 text-emerald-600 hover:bg-emerald-100 font-bold px-2 py-0.5 rounded transition-all">
+                            🤖 AI 자동인식
+                        </button>
+                    </div>
+                </div>
+                <form id="newLaborForm" onsubmit="addLabor(event)" class="space-y-2">
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="text" id="newName" placeholder="성명" required class="w-full border border-slate-200 rounded p-1.5 focus:ring-1 focus:ring-blue-500 outline-none font-bold">
+                        <input type="text" id="newJob" placeholder="직종 (예: 보통인부)" class="w-full border border-slate-200 rounded p-1.5 focus:ring-1 focus:ring-blue-500 outline-none">
+                    </div>
+                    <div>
+                        <input type="text" id="newSsn" placeholder="주민등록번호 (숫자 13자리)" required class="w-full border border-slate-200 rounded p-1.5 font-mono focus:ring-1 focus:ring-blue-500 outline-none" maxlength="14">
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="text" id="newPhone" placeholder="연락처" class="w-full border border-slate-200 rounded p-1.5 focus:ring-1 focus:ring-blue-500 outline-none" maxlength="13">
+                        <input type="text" id="newPrice" placeholder="단가 (원)" required class="w-full border border-slate-200 rounded p-1.5 font-mono focus:ring-1 focus:ring-blue-500 outline-none">
+                    </div>
+                    <div class="grid grid-cols-3 gap-2">
+                        <input type="text" id="newBank" placeholder="은행명" class="w-full border border-slate-200 rounded p-1.5 focus:ring-1 focus:ring-blue-500 outline-none col-span-1">
+                        <input type="text" id="newAccount" placeholder="계좌번호" class="w-full border border-slate-200 rounded p-1.5 font-mono focus:ring-1 focus:ring-blue-500 outline-none col-span-2">
+                    </div>
+                    <div>
+                        <input type="text" id="newAddress" placeholder="주소" class="w-full border border-slate-200 rounded p-1.5 focus:ring-1 focus:ring-blue-500 outline-none">
+                    </div>
+                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold p-1.5 rounded transition-all flex items-center justify-center gap-1">
+                        <i data-lucide="user-plus-2" class="w-3.5 h-3.5"></i> 근로자 대장 등록
+                    </button>
+                </form>
+            </div>
+
+            <!-- 2-2. 인쇄 및 양식 옵션 -->
+            <div class="bg-white p-3.5 rounded-xl shadow-sm border border-slate-200">
+                <h2 class="text-xs font-black text-slate-900 mb-2 flex items-center gap-1.5 uppercase tracking-wider">
+                    <i data-lucide="settings" class="text-indigo-500 w-4 h-4"></i>
+                    대장 출력 양식 제어
+                </h2>
+                <div class="space-y-2">
+                    <div class="flex items-center justify-between bg-slate-50 p-2 rounded border border-slate-100">
+                        <div>
+                            <span class="font-bold text-slate-700 block text-[11px]">인쇄 결재선 표시</span>
+                            <span class="text-[9px] text-slate-400">출력장 우상단 결재란 여부</span>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="toggleSignLine" onchange="toggleSignLineDisplay()" checked class="sr-only peer">
+                            <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                        </label>
+                    </div>
+                    <div class="flex items-center justify-between bg-slate-50 p-2 rounded border border-slate-100">
+                        <div>
+                            <span class="font-bold text-slate-700 block text-[11px]">실무 데이터 전체 포맷</span>
+                            <span class="text-[9px] text-slate-400">데이터가 영구 초기화됩니다</span>
+                        </div>
+                        <button onclick="resetAllDatabase()" class="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded px-2 py-1 font-bold text-[10px] transition-all">
+                            전체포맷
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. 실시간 요율 기준 요약 카드 -->
+            <div class="bg-slate-900 text-slate-300 p-3.5 rounded-xl shadow-sm border border-slate-800">
+                <h2 class="text-xs font-black text-white mb-2 flex items-center gap-1.5 uppercase tracking-wider">
+                    <i data-lucide="shield-check" class="text-amber-400 w-4 h-4"></i>
+                    2026년 사회보험 공제 요율
+                </h2>
+                <div class="grid grid-cols-2 gap-x-3 gap-y-1.5 text-[10.5px] border-b border-slate-800 pb-2 mb-2">
+                    <div class="flex justify-between">
+                        <span class="text-slate-400">국민연금</span>
+                        <span class="font-bold text-white">4.5% <span class="text-[9px] text-amber-400">(8일↑, 만60세미만)</span></span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-400">건강보험</span>
+                        <span class="font-bold text-white">3.545% <span class="text-[9px] text-amber-400">(8일↑, 연령무관)</span></span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-400">장기요양</span>
+                        <span class="font-bold text-white">건강의 12.95%</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-400">고용보험</span>
+                        <span class="font-bold text-white">0.9% <span class="text-[9px] text-amber-400">(전체, 만65세미만)</span></span>
+                    </div>
+                </div>
+                <div class="text-[10px] text-slate-400 leading-tight">
+                    💡 <strong>소득세:</strong> 일당 15만원 비과세 공제 후 원천징수세율 2.7%(지방소득세 0.27%)가 차등 적용되며, 일별 세액이 1,000원 미만인 경우 소액부징수 제도로 면제됩니다.
+                </div>
+            </div>
+
+            <!-- 4. 현재 대장 회계 요약 -->
+            <div class="bg-white p-3.5 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-between">
+                <div>
+                    <h2 class="text-xs font-black text-slate-900 mb-2 flex items-center gap-1.5 uppercase tracking-wider">
+                        <i data-lucide="pie-chart" class="text-blue-500 w-4 h-4"></i>
+                        현재 대장 회계 요약
+                    </h2>
+                    <div class="space-y-1 text-slate-600">
+                        <div class="flex justify-between">
+                            <span>등록 인원수:</span>
+                            <span id="statTotalCount" class="font-extrabold text-slate-900">0명</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>지급 노무비액:</span>
+                            <span id="statTotalWages" class="font-extrabold text-slate-900">0원</span>
+                        </div>
+                        <div class="flex justify-between text-red-600">
+                            <span>공제 세금/보험액:</span>
+                            <span id="statTotalDeduction" class="font-extrabold">0원</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="border-t border-slate-100 pt-2 mt-2 flex justify-between items-center">
+                    <span class="font-black text-slate-800">실 수령 총액:</span>
+                    <span id="statNetPay" class="text-sm font-black text-blue-600 font-mono">0원</span>
+                </div>
+            </div>
+
+            <!-- 5. 화면 표시 및 미세 조정 설정 -->
+            <div class="bg-white p-3.5 rounded-xl shadow-sm border border-slate-200">
+                <div class="space-y-3">
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-slate-500 font-bold">테이블 크기 배율</span>
+                            <span id="zoomVal" class="text-blue-600 font-bold">95%</span>
+                        </div>
+                        <input type="range" id="zoomSlider" min="70" max="120" value="95" oninput="applyZoom(this.value)" class="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600">
+                    </div>
+                    <div>
+                        <span class="text-slate-500 font-bold block mb-1">셀 여백 밀도</span>
+                        <div class="grid grid-cols-3 gap-1">
+                            <button onclick="applyDensity('narrow')" id="btn-narrow" class="py-1 rounded text-center border font-bold transition-all bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100">아주 좁게</button>
+                            <button onclick="applyDensity('normal')" id="btn-normal" class="py-1 rounded text-center border font-bold transition-all bg-blue-50 border-blue-400 text-blue-700">보통</button>
+                            <button onclick="applyDensity('wide')" id="btn-wide" class="py-1 rounded text-center border font-bold transition-all bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100">넓게</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- 우측 실시간 노무 대장 테이블 영역 -->
+        <main class="flex-1 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col print-container h-full">
+            
+            <!-- 테이블 제어 및 검색 헤더 바 (no-print) -->
+            <div class="p-3 border-b border-slate-200 bg-slate-50 flex flex-col xl:flex-row justify-between items-stretch xl:items-center gap-2 shrink-0 no-print">
+                <div class="flex flex-wrap items-center gap-2">
+                    <h1 class="text-xs font-bold text-slate-800 flex items-center gap-1 shrink-0">
+                        <i data-lucide="clipboard-list" class="text-blue-600 w-4 h-4"></i>
+                        일용노무비 청구지급대장
+                    </h1>
+                    
+                    <!-- 대장 편집 도구 패널 (기능 대폭 추가) -->
+                    <div class="flex flex-wrap items-center gap-1.5 bg-white border border-slate-200 rounded p-1">
+                        <span class="text-[10px] text-slate-400 font-semibold px-1">⚡ 실무 도구:</span>
+                        <button onclick="bulkSetAttendance(1, false)" class="text-[10px] text-blue-600 hover:bg-blue-50 px-1.5 py-0.5 rounded font-bold transition-all" title="한 달 전체를 1.0으로 기입합니다.">전원출근(전체)</button>
+                        <button onclick="bulkSetAttendance(1, true)" class="text-[10px] text-indigo-600 hover:bg-indigo-50 px-1.5 py-0.5 rounded font-bold transition-all" title="토/일 주말을 제외하고 평일만 1.0 출역을 일괄 기입합니다.">전원출근(평일만)</button>
+                        <button onclick="bulkAvoidInsurance()" class="text-[10px] text-emerald-600 hover:bg-emerald-50 px-1.5 py-0.5 rounded font-bold transition-all" title="8대사회보험 가입 의무 기준 미만인 7일까지만 무작위 평일 출역을 채워 넣어 공제를 예방합니다.">국민/건강보험 회피 세팅 (7일)</button>
+                        <button onclick="clearWeekendsAttendance()" class="text-[10px] text-rose-600 hover:bg-rose-50 px-1.5 py-0.5 rounded font-bold transition-all" title="입력된 출역 중 토요일과 일요일 출역 기록을 모두 지웁니다.">주말 출역 일괄제거</button>
+                        <button onclick="bulkSetAttendance(0, false)" class="text-[10px] text-slate-500 hover:bg-slate-50 px-1.5 py-0.5 rounded font-bold transition-all">출근포맷</button>
+                        <button onclick="bulkSetPrice()" class="text-[10px] text-amber-600 hover:bg-amber-50 px-1.5 py-0.5 rounded font-bold transition-all">단가일괄변경</button>
+                        <button onclick="openSpecificDateModal()" class="text-[10px] text-purple-600 hover:bg-purple-50 px-1.5 py-0.5 rounded font-bold flex items-center gap-0.5 transition-all">
+                            <i data-lucide="calendar" class="w-3 h-3"></i> 날짜 일괄기입
+                        </button>
+                        <button onclick="toggleDragRangeMode()" id="dragRangeBtn" class="text-[10px] text-orange-600 hover:bg-orange-50 px-1.5 py-0.5 rounded font-bold flex items-center gap-0.5 transition-all border border-transparent" title="드래그로 여러 날짜를 한 번에 선택하여 출역값을 일괄 기입합니다.">
+                            <i data-lucide="hand" class="w-3 h-3"></i> 드래그 범위 기입
+                        </button>
+                        <span class="h-3 border-r border-slate-200"></span>
+                    </div>
+                </div>
+                <!-- 실시간 검색 및 스마트 공제유형별 필터 -->
+                <div class="flex items-center gap-2 max-w-sm w-full">
+                    <select id="insuranceFilter" onchange="updateHeaderAndTable()" class="text-[10px] bg-white border border-slate-200 rounded px-2 py-1 focus:outline-none font-bold">
+                        <option value="all">공제 유형별 필터 (전체)</option>
+                        <option value="pensionExempt">만 60세 이상 국민연금 면제자</option>
+                        <option value="employmentExempt">만 65세 이상 고용보험 면제자</option>
+                        <option value="insuranceTarget">8일 이상 4대보험 취득 대상자</option>
+                    </select>
+                    <div class="relative w-full">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-2.5 pointer-events-none text-slate-400">
+                            <i data-lucide="search" class="w-3.5 h-3.5"></i>
+                        </span>
+                        <input type="text" id="searchFilter" oninput="updateHeaderAndTable()" placeholder="성명, 직종, 주민번호 검색" class="w-full text-xs bg-white border border-slate-200 rounded pl-7 pr-3 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 현장 인쇄 타이틀 정보 카드 및 결재란 영역 -->
+            <div class="px-4 py-2 bg-slate-100/50 border-b border-slate-200 flex flex-row justify-between items-center gap-1.5 shrink-0 print:bg-white print:p-2 print:border-b-2 print:border-black">
+                <div>
+                    <h2 id="viewProjectName" class="text-xs font-black text-slate-900 print:text-xs"></h2>
+                    <div class="flex gap-4 text-[10px] text-slate-500 mt-0.5 print:text-black">
+                        <span>상호: <strong id="viewCompany" class="text-slate-800 font-bold"></strong></span>
+                        <span>지급기간: <strong id="viewPeriod" class="text-slate-800 font-bold font-mono text-[11px]"></strong></span>
+                    </div>
+                </div>
+
+                <!-- 실무용 결재라인 박스 (동적 제어 지원) -->
+                <div id="signLineBox" class="flex border border-slate-400 text-slate-800 print:border-black select-none">
+                    <div class="w-5 bg-slate-100 flex items-center justify-center border-r border-slate-400 font-bold text-[8px] text-center px-0.5 print:border-black print:bg-slate-200">결재</div>
+                    <div class="flex">
+                        <div class="border-r border-slate-400 print:border-black w-14 text-center">
+                            <div class="bg-slate-50 border-b border-slate-400 py-0.5 font-semibold text-[8px] print:bg-slate-100 print:border-black">담 당</div>
+                            <div class="h-8"></div>
+                        </div>
+                        <div class="border-r border-slate-400 print:border-black w-14 text-center">
+                            <div class="bg-slate-50 border-b border-slate-400 py-0.5 font-semibold text-[8px] print:bg-slate-100 print:border-black">과 장</div>
+                            <div class="h-8"></div>
+                        </div>
+                        <div class="w-14 text-center">
+                            <div class="bg-slate-50 border-b border-slate-400 py-0.5 font-semibold text-[8px] print:bg-slate-100 print:border-black">소 장</div>
+                            <div class="h-8"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 실시간 스케일이 조정되는 노무 대장 출력 테이블 본체 -->
+            <div class="table-container flex-1 overflow-auto bg-slate-50">
+                <table class="w-full text-left border-collapse min-w-[2200px] bg-white" id="paymentTable">
+                    <thead>
+                        <tr class="bg-slate-200/90 text-[10px] font-bold text-slate-700 border-b border-slate-300 text-center select-none sticky top-0 z-10 print:bg-slate-200 print:text-black print:border-black">
+                            <th rowspan="2" class="p-1 border-r border-slate-300 w-10 sticky left-0 bg-slate-200 z-20 print:border-black">NO</th>
+                            <th rowspan="2" class="p-1 border-r border-slate-300 w-24 sticky left-[40px] bg-slate-200 z-20 print:border-black">성명</th>
+                            <th rowspan="2" class="p-1 border-r border-slate-300 w-32 print:border-black">주민등록번호</th>
+                            <th rowspan="2" class="p-1 border-r border-slate-300 w-20 print:border-black">직종</th>
+                            <th colspan="31" class="p-0.5 border-r border-slate-300 tracking-wider print:border-black">출 근 일 자 (1일 ~ 31일)</th>
+                            <th rowspan="2" class="p-1 border-r border-slate-300 w-16 print:border-black">일수</th>
+                            <th rowspan="2" class="p-1 border-r border-slate-300 w-24 print:border-black">단가</th>
+                            <th rowspan="2" class="p-1 border-r border-slate-300 w-28 print:border-black">총액</th>
+                            <th colspan="5" class="p-0.5 border-r border-slate-300 print:border-black">공제 금액 내역 (2026년 나이/세법 요율 기준)</th>
+                            <th rowspan="2" class="p-1 border-r border-slate-300 w-28 print:border-black">지급액<br><span class="text-[9px] font-normal">(실수령액)</span></th>
+                            <th rowspan="2" class="p-1 w-52 no-print">필수 서류 발급 / 제어</th>
+                        </tr>
+                        <tr id="daysOfWeekHeader" class="bg-slate-100 text-[9.5px] text-slate-600 border-b border-slate-300 text-center sticky top-[28px] z-10 print:bg-slate-100 print:text-black print:border-black">
+                            <!-- 요일정보 및 1~31 숫자가 동적 요일색상(토/일)과 함께 렌더링됩니다. -->
+                        </tr>
+                    </thead>
+                    <tbody id="laborList" class="transition-all">
+                        <!-- JS를 통해 데이터 실시간 삽입 -->
+                    </tbody>
+                    <tfoot class="sticky bottom-0 z-10">
+                        <tr id="totalRow" class="bg-blue-100/90 font-extrabold text-[10.5px] text-slate-900 border-t-2 border-slate-300 text-center print:bg-slate-200 print:text-black print:border-black">
+                            <!-- 합계 행 자동 계산 -->
+                        </tr>
+                    </tfoot>
+                </table>
+                <!-- 인쇄 전용 2행 날짜 테이블 (화면에서는 숨김, 인쇄 시에만 표시) -->
+                <table id="printTable"></table>
+            </div>
+        </main>
+    </div>
+
+    <!-- 팝업 모달 1: 근로자 상세 정보 조회 및 수정 (no-print) -->
+    <div id="laborDetailModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center z-50 no-print">
+        <div class="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in duration-150">
+            <div class="bg-slate-900 text-white p-4 flex justify-between items-center">
+                <h3 class="font-bold flex items-center gap-2">
+                    <i data-lucide="user-check" class="w-4 h-4 text-blue-400"></i>
+                    <span>근로자 상세 신상 정보</span>
+                    <span id="detailModalTitle" class="text-sm font-black text-blue-300 ml-1"></span>
+                </h3>
+                <button onclick="closeDetailModal()" class="text-slate-400 hover:text-white transition-all">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <div class="p-5 space-y-4 overflow-y-auto max-h-[75vh]">
+                <input type="hidden" id="detailLaborId">
+                
+                <div class="grid grid-cols-3 gap-3">
+                    <div>
+                        <label class="block font-bold text-slate-500 mb-1 text-[10px]">성명</label>
+                        <input type="text" id="detailName" class="w-full bg-slate-50 border border-slate-200 rounded p-2 focus:ring-1 focus:ring-blue-500 outline-none font-bold">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-500 mb-1 text-[10px]">직종</label>
+                        <input type="text" id="detailJob" class="w-full bg-slate-50 border border-slate-200 rounded p-2 focus:ring-1 focus:ring-blue-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-500 mb-1 text-[10px]">주민등록번호</label>
+                        <input type="text" id="detailSsn" class="w-full bg-slate-50 border border-slate-200 rounded p-2 font-mono focus:ring-1 focus:ring-blue-500 outline-none" maxlength="14">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-3">
+                    <div>
+                        <label class="block font-bold text-slate-500 mb-1 text-[10px]">연락처</label>
+                        <input type="text" id="detailPhone" placeholder="010-1234-5678" class="w-full bg-slate-50 border border-slate-200 rounded p-2 font-mono focus:ring-1 focus:ring-blue-500 outline-none" maxlength="13">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-500 mb-1 text-[10px]">지급 은행명</label>
+                        <input type="text" id="detailBank" placeholder="예: 국민은행" class="w-full bg-slate-50 border border-slate-200 rounded p-2 focus:ring-1 focus:ring-blue-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-500 mb-1 text-[10px]">계좌번호</label>
+                        <input type="text" id="detailAccount" placeholder="숫자와 하이픈만 입력" class="w-full bg-slate-50 border border-slate-200 rounded p-2 font-mono focus:ring-1 focus:ring-blue-500 outline-none">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block font-bold text-slate-500 mb-1 text-[10px]">주소</label>
+                    <input type="text" id="detailAddress" class="w-full bg-slate-50 border border-slate-200 rounded p-2 focus:ring-1 focus:ring-blue-500 outline-none">
+                </div>
+
+                <div class="bg-slate-50 p-3 rounded border border-slate-100 flex items-center justify-between">
+                    <div>
+                        <span class="font-bold text-slate-700">신규 채용 안전보건교육 이수 여부</span>
+                        <p class="text-[10px] text-slate-400">교육 일지(이수증) 출력 시 이수 정보가 적용됩니다.</p>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="detailSafetyEdu" class="sr-only peer">
+                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
+                </div>
+
+                <!-- 외국인 근로자 관리 섹션 -->
+                <div class="bg-orange-50 border border-orange-200 rounded-lg p-3 space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="font-bold text-orange-800 text-[11px] flex items-center gap-1">🌏 외국인 근로자 관리 <span class="text-[10px] font-normal text-orange-500">(내국인은 비워두세요)</span></span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block font-bold text-slate-500 mb-1 text-[10px]">비자 종류</label>
+                            <select id="detailVisaType" class="w-full bg-white border border-orange-200 rounded p-1.5 text-xs focus:ring-1 focus:ring-orange-400 outline-none">
+                                <option value="">내국인 / 해당없음</option>
+                                <option value="E-9">E-9 (비전문취업)</option>
+                                <option value="E-7">E-7 (특정활동)</option>
+                                <option value="H-2">H-2 (방문취업)</option>
+                                <option value="F-4">F-4 (재외동포)</option>
+                                <option value="F-5">F-5 (영주)</option>
+                                <option value="F-6">F-6 (결혼이민)</option>
+                                <option value="D-8">D-8 (기업투자)</option>
+                                <option value="기타">기타</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block font-bold text-slate-500 mb-1 text-[10px]">체류 만료일</label>
+                            <input type="date" id="detailVisaExpiry" class="w-full bg-white border border-orange-200 rounded p-1.5 text-xs focus:ring-1 focus:ring-orange-400 outline-none">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-500 mb-1 text-[10px]">국적</label>
+                        <input type="text" id="detailNationality" placeholder="예: 베트남, 중국, 캄보디아" class="w-full bg-white border border-orange-200 rounded p-1.5 text-xs focus:ring-1 focus:ring-orange-400 outline-none">
+                    </div>
+                </div>
+            </div>
+            <div class="p-4 bg-slate-50 border-t border-slate-100 flex justify-between items-center gap-2 text-xs">
+                <button onclick="openSpecificDateModalForLabor(document.getElementById('detailLaborId').value)"
+                    class="flex items-center gap-1.5 px-3 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold rounded border border-purple-200 transition-all">
+                    <i data-lucide="calendar-check" class="w-3.5 h-3.5"></i> 날짜 일괄 기입
+                </button>
+                <div class="flex gap-2">
+                    <button onclick="closeDetailModal()" class="px-4 py-2 font-medium text-slate-500 hover:text-slate-800">닫기</button>
+                    <button onclick="saveDetailInfo()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 rounded shadow-sm">변동사항 저장</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 팝업 모달 2: 신규 현장 등록 (no-print) -->
+    <div id="projectModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center z-50 no-print">
+        <div class="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-md overflow-hidden">
+            <div class="bg-slate-900 text-white p-4 flex justify-between items-center">
+                <h3 class="font-bold flex items-center gap-1.5">
+                    <i data-lucide="folder-plus" class="w-4 h-4"></i> 신규 현장 프로젝트 등록
+                </h3>
+                <button onclick="closeNewProjectModal()" class="text-slate-400 hover:text-white transition-all">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <div class="p-5 space-y-3.5">
+                <div>
+                    <label class="block font-bold text-slate-500 mb-1">상호(회사명)</label>
+                    <input type="text" id="modalCompany" placeholder="예: (합)유일건설" class="w-full bg-slate-50 border border-slate-200 rounded p-2.5 focus:ring-1 focus:ring-blue-500 outline-none">
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-500 mb-1">대표자명</label>
+                    <input type="text" id="modalRepresentative" placeholder="예: 김민지" class="w-full bg-slate-50 border border-slate-200 rounded p-2.5 focus:ring-1 focus:ring-blue-500 outline-none">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-bold text-slate-500 mb-1">연도 (4자리)</label>
+                        <input type="number" id="modalYear" value="2026" class="w-full bg-slate-50 border border-slate-200 rounded p-2.5 focus:ring-1 focus:ring-blue-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-500 mb-1">월 (1~12)</label>
+                        <input type="number" id="modalMonth" min="1" max="12" value="4" class="w-full bg-slate-50 border border-slate-200 rounded p-2.5 focus:ring-1 focus:ring-blue-500 outline-none">
+                    </div>
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-500 mb-1">공사명 (전체)</label>
+                    <input type="text" id="modalProjectName" placeholder="예: 원주 캠프통 문화체육공원 조성사업 중 조경시설물공사" class="w-full bg-slate-50 border border-slate-200 rounded p-2.5 focus:ring-1 focus:ring-blue-500 outline-none">
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-500 mb-1">구체적 공종명</label>
+                    <input type="text" id="modalWorkType" placeholder="예: 조경시설물공사" class="w-full bg-slate-50 border border-slate-200 rounded p-2.5 focus:ring-1 focus:ring-blue-500 outline-none">
+                </div>
+            </div>
+            <div class="p-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-2 text-xs">
+                <button onclick="closeNewProjectModal()" class="px-4 py-2 font-medium text-slate-500 hover:text-slate-800">취소</button>
+                <button onclick="saveNewProject()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 rounded shadow-sm">등록 및 이동</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 팝업 모달 2-2: 현장 대장 수정 (no-print) -->
+    <div id="editProjectModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center z-50 no-print">
+        <div class="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-md overflow-hidden">
+            <div class="bg-amber-700 text-white p-4 flex justify-between items-center">
+                <h3 class="font-bold flex items-center gap-1.5">
+                    <i data-lucide="pencil" class="w-4 h-4"></i> 현장 대장 정보 수정
+                </h3>
+                <button onclick="closeEditProjectModal()" class="text-amber-200 hover:text-white transition-all">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <div class="p-5 space-y-3.5">
+                <div>
+                    <label class="block font-bold text-slate-500 mb-1">상호(회사명)</label>
+                    <input type="text" id="editModalCompany" placeholder="예: (합)유일건설" class="w-full bg-slate-50 border border-slate-200 rounded p-2.5 focus:ring-1 focus:ring-amber-500 outline-none">
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-500 mb-1">대표자명</label>
+                    <input type="text" id="editModalRepresentative" placeholder="예: 김민지" class="w-full bg-slate-50 border border-slate-200 rounded p-2.5 focus:ring-1 focus:ring-amber-500 outline-none">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-bold text-slate-500 mb-1">연도 (4자리)</label>
+                        <input type="number" id="editModalYear" class="w-full bg-slate-50 border border-slate-200 rounded p-2.5 focus:ring-1 focus:ring-amber-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-500 mb-1">월 (1~12)</label>
+                        <input type="number" id="editModalMonth" min="1" max="12" class="w-full bg-slate-50 border border-slate-200 rounded p-2.5 focus:ring-1 focus:ring-amber-500 outline-none">
+                    </div>
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-500 mb-1">공사명 (전체)</label>
+                    <input type="text" id="editModalProjectName" class="w-full bg-slate-50 border border-slate-200 rounded p-2.5 focus:ring-1 focus:ring-amber-500 outline-none">
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-500 mb-1">구체적 공종명</label>
+                    <input type="text" id="editModalWorkType" class="w-full bg-slate-50 border border-slate-200 rounded p-2.5 focus:ring-1 focus:ring-amber-500 outline-none">
+                </div>
+            </div>
+            <div class="p-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-2 text-xs">
+                <button onclick="closeEditProjectModal()" class="px-4 py-2 font-medium text-slate-500 hover:text-slate-800">취소</button>
+                <button onclick="saveEditedProject()" class="bg-amber-600 hover:bg-amber-700 text-white font-bold px-4 py-2 rounded shadow-sm">수정 저장</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 팝업 모달 3: 선택날짜 일괄 지정 (no-print) -->
+    <div id="specificDateModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center z-50 no-print">
+        <div class="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-lg overflow-hidden flex flex-col max-h-[92vh]">
+            <div class="bg-slate-900 text-white p-4 flex justify-between items-center shrink-0">
+                <h3 class="font-bold flex items-center gap-1.5 text-xs uppercase tracking-wider">
+                    <i data-lucide="calendar" class="w-4 h-4 text-purple-400"></i> 특정 날짜 출역 일괄 조율기
+                </h3>
+                <button onclick="closeSpecificDateModal()" class="text-slate-400 hover:text-white transition-all">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <div class="p-5 space-y-4 overflow-y-auto">
+
+                <!-- ① 근로자 선택 -->
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="block font-bold text-slate-500 text-xs">적용 대상 근로자 <span id="selectedLaborCount" class="text-purple-600"></span></label>
+                        <div class="flex gap-2 text-[10px]">
+                            <button onclick="selectAllLabors()" class="text-indigo-600 hover:underline font-bold">전체선택</button>
+                            <span class="text-slate-300">|</span>
+                            <button onclick="deselectAllLabors()" class="text-slate-400 hover:underline font-bold">전체해제</button>
+                        </div>
+                    </div>
+                    <!-- 근로자 검색 -->
+                    <div class="relative mb-2">
+                        <input type="text" id="laborSearchInModal" placeholder="이름 또는 직종으로 검색..."
+                            oninput="filterLaborListInModal()"
+                            class="w-full bg-slate-50 border border-slate-200 rounded p-2 pr-8 text-xs font-bold focus:ring-1 focus:ring-purple-400 outline-none placeholder:font-normal placeholder:text-slate-400">
+                        <span class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 text-[11px]">🔍</span>
+                    </div>
+                    <!-- 근로자 체크박스 목록 -->
+                    <div id="laborCheckboxList" class="border border-slate-200 rounded overflow-y-auto max-h-36 divide-y divide-slate-100 text-xs">
+                        <!-- JS로 동적 생성 -->
+                    </div>
+                </div>
+
+                <hr class="border-slate-100">
+
+                <!-- ② 날짜 선택 -->
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="block font-bold text-slate-500 text-xs">일괄 적용할 날짜 <span id="selectedDayCount" class="text-purple-600"></span></label>
+                        <div class="flex gap-2 text-[10px]">
+                            <button onclick="selectAllDays()" class="text-indigo-600 hover:underline font-bold">전체선택</button>
+                            <span class="text-slate-300">|</span>
+                            <button onclick="deselectAllDays()" class="text-slate-400 hover:underline font-bold">전체해제</button>
+                            <span class="text-slate-300">|</span>
+                            <button onclick="selectWeekdays()" class="text-emerald-600 hover:underline font-bold">평일만</button>
+                            <span class="text-slate-300">|</span>
+                            <button onclick="selectWeekends()" class="text-rose-500 hover:underline font-bold">주말만</button>
+                        </div>
+                    </div>
+                    <div id="dayCheckboxGrid" class="grid grid-cols-7 gap-1 text-[11px] font-bold select-none">
+                        <!-- JS로 동적 생성 -->
+                    </div>
+                </div>
+
+                <!-- ③ 출역 값 -->
+                <div>
+                    <label class="block font-bold text-slate-500 mb-1 text-xs">설정할 출역 값</label>
+                    <select id="modalTargetValue" class="w-full bg-slate-50 border border-slate-200 rounded p-2 font-bold focus:ring-1 focus:ring-blue-500 outline-none">
+                        <option value="1">1.0 (하루 만출)</option>
+                        <option value="0.5">0.5 (반일 근무)</option>
+                        <option value="0">0.0 (출근 없음 / 취소)</option>
+                    </select>
+                </div>
+
+            </div>
+            <div class="p-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-2 text-xs shrink-0">
+                <button onclick="closeSpecificDateModal()" class="px-4 py-2 font-medium text-slate-500 hover:text-slate-800">닫기</button>
+                <button onclick="saveSpecificDateAttendance()" class="bg-purple-600 hover:bg-purple-700 text-white font-bold px-4 py-2 rounded shadow-sm">일괄 기입 적용</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 팝업 모달 4: 근로자 복수 일괄 등록 모달 (no-print) -->
+    <div id="bulkUserModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center z-50 no-print">
+        <div class="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-4xl overflow-hidden max-h-[92vh] flex flex-col">
+            <div class="bg-slate-900 text-white p-4 flex justify-between items-center shrink-0">
+                <h3 class="font-bold flex items-center gap-1.5">
+                    <i data-lucide="users" class="w-4 h-4 text-purple-400"></i> 근로자 복수 일괄 추가
+                    <span class="text-[10px] bg-white/20 px-2 py-0.5 rounded-full font-normal">이름·주민번호·연락처·주소·은행 일괄 입력</span>
+                </h3>
+                <button onclick="closeBulkUserModal()" class="text-slate-400 hover:text-white transition-all">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <div class="p-4 space-y-3 overflow-y-auto flex-1">
+                <!-- 공통 설정 -->
+                <div class="grid grid-cols-3 gap-3 bg-slate-50 p-3 rounded-lg border border-slate-200">
+                    <div>
+                        <label class="block font-bold text-slate-500 mb-1 text-[10px]">일괄 적용 직종</label>
+                        <input type="text" id="bulkJob" value="보통인부" class="w-full bg-white border border-slate-200 rounded p-1.5 focus:ring-1 focus:ring-purple-500 outline-none text-xs">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-500 mb-1 text-[10px]">일괄 적용 단가</label>
+                        <input type="text" id="bulkPrice" value="180,000" class="w-full bg-white border border-slate-200 rounded p-1.5 font-mono focus:ring-1 focus:ring-purple-500 outline-none text-xs">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-500 mb-1 text-[10px]">일괄 적용 은행명</label>
+                        <input type="text" id="bulkBank" placeholder="예: 농협은행" class="w-full bg-white border border-slate-200 rounded p-1.5 focus:ring-1 focus:ring-purple-500 outline-none text-xs">
+                    </div>
+                </div>
+
+                <!-- 입력 열 선택 -->
+                <div class="bg-purple-50 border border-purple-200 rounded-lg p-3">
+                    <p class="font-bold text-purple-800 text-[11px] mb-2">📋 입력 방식 선택 — 열 구분: <code class="bg-purple-100 px-1 rounded">Tab</code> 또는 <code class="bg-purple-100 px-1 rounded">콤마(,)</code> · 행 구분: <code class="bg-purple-100 px-1 rounded">줄바꿈(Enter)</code></p>
+                    <div class="flex flex-wrap gap-2 text-[10px]">
+                        <label class="flex items-center gap-1 font-bold cursor-pointer">
+                            <input type="radio" name="bulkMode" value="name_only" id="bulkModeNameOnly" checked onchange="updateBulkPlaceholder()" class="accent-purple-600">
+                            이름만
+                        </label>
+                        <label class="flex items-center gap-1 font-bold cursor-pointer">
+                            <input type="radio" name="bulkMode" value="name_ssn" onchange="updateBulkPlaceholder()" class="accent-purple-600">
+                            이름 + 주민번호
+                        </label>
+                        <label class="flex items-center gap-1 font-bold cursor-pointer">
+                            <input type="radio" name="bulkMode" value="name_ssn_phone" onchange="updateBulkPlaceholder()" class="accent-purple-600">
+                            이름 + 주민번호 + 연락처
+                        </label>
+                        <label class="flex items-center gap-1 font-bold cursor-pointer">
+                            <input type="radio" name="bulkMode" value="name_ssn_phone_addr" onchange="updateBulkPlaceholder()" class="accent-purple-600">
+                            이름 + 주민번호 + 연락처 + 주소
+                        </label>
+                        <label class="flex items-center gap-1 font-bold cursor-pointer">
+                            <input type="radio" name="bulkMode" value="full" onchange="updateBulkPlaceholder()" class="accent-purple-600">
+                            전체 (이름 + 주민번호 + 연락처 + 주소 + 계좌번호)
+                        </label>
+                    </div>
+                </div>
+
+                <!-- 미리보기 헤더 표시 -->
+                <div id="bulkColumnHeader" class="text-[10px] font-mono bg-slate-100 border border-slate-200 rounded px-3 py-1.5 text-slate-600"></div>
+
+                <!-- 텍스트 입력 영역 -->
+                <div>
+                    <label class="block font-bold text-slate-500 mb-1 text-[10px]">근로자 목록 입력</label>
+                    <textarea id="bulkNames" rows="8"
+                        class="w-full bg-slate-50 border border-slate-200 rounded p-2 focus:ring-1 focus:ring-purple-500 outline-none font-mono text-xs leading-relaxed resize-y"
+                        oninput="renderBulkPreview()"
+                        placeholder="홍길동"></textarea>
+                </div>
+
+                <!-- 입력 미리보기 테이블 -->
+                <div id="bulkPreviewArea" class="hidden">
+                    <p class="font-bold text-slate-600 text-[10px] mb-1">👁 등록 미리보기 <span id="bulkPreviewCount" class="text-purple-600"></span></p>
+                    <div class="overflow-x-auto max-h-44 border border-slate-200 rounded">
+                        <table class="w-full text-[10px] text-left">
+                            <thead class="bg-slate-200 sticky top-0">
+                                <tr id="bulkPreviewHead"></tr>
+                            </thead>
+                            <tbody id="bulkPreviewBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-4 bg-slate-50 border-t border-slate-100 flex justify-between items-center gap-2 text-xs shrink-0">
+                <span class="text-slate-400">⚠️ 주민번호 미입력 시 임시 번호가 생성됩니다. 등록 후 이름 클릭 → 수정 권장.</span>
+                <div class="flex gap-2">
+                    <button onclick="closeBulkUserModal()" class="px-4 py-2 font-medium text-slate-500 hover:text-slate-800">취소</button>
+                    <button onclick="saveBulkUsers()" class="bg-purple-600 hover:bg-purple-700 text-white font-bold px-4 py-2 rounded shadow-sm">일괄 등록 실행</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 팝업 모달 6: 4대보험 취득신고서 (no-print) -->
+    <div id="insuranceReportModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center z-50 no-print">
+        <div class="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-3xl overflow-hidden max-h-[90vh] flex flex-col">
+            <div class="bg-gradient-to-r from-teal-700 to-cyan-700 text-white p-4 flex justify-between items-center shrink-0">
+                <h3 class="font-bold flex items-center gap-2">
+                    <i data-lucide="file-text" class="w-4 h-4"></i> 4대보험 취득신고서
+                    <span class="text-[10px] bg-white/20 px-2 py-0.5 rounded-full font-normal">8일 이상 근무자 자동 추출</span>
+                </h3>
+                <button onclick="closeInsuranceReportModal()" class="text-teal-200 hover:text-white">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <div class="p-5 overflow-y-auto flex-1">
+                <div id="insuranceReportContent"></div>
+            </div>
+            <div class="p-4 bg-slate-50 border-t border-slate-100 flex justify-between items-center text-xs shrink-0">
+                <span id="insuranceReportCount" class="text-slate-500 font-semibold"></span>
+                <div class="flex gap-2">
+                    <button onclick="closeInsuranceReportModal()" class="px-4 py-2 font-medium text-slate-500 hover:text-slate-800">닫기</button>
+                    <button onclick="printInsuranceReport()" class="bg-teal-600 hover:bg-teal-700 text-white font-bold px-4 py-2 rounded shadow-sm flex items-center gap-1">
+                        <i data-lucide="printer" class="w-3.5 h-3.5"></i> 신고서 인쇄
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 팝업 모달 7: 다음달 이월 (no-print) -->
+    <div id="carryOverModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center z-50 no-print">
+        <div class="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-md overflow-hidden">
+            <div class="bg-gradient-to-r from-violet-700 to-purple-700 text-white p-4 flex justify-between items-center">
+                <h3 class="font-bold flex items-center gap-2">
+                    <i data-lucide="calendar-arrow-right" class="w-4 h-4"></i> 근로자 다음달 이월
+                </h3>
+                <button onclick="closeCarryOverModal()" class="text-violet-200 hover:text-white">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <div class="p-5 space-y-4">
+                <div class="bg-violet-50 border border-violet-200 rounded-lg p-3 text-xs text-violet-800">
+                    <p class="font-bold mb-1">📋 이월 기능 안내</p>
+                    <p>현재 대장의 근로자 정보(성명, 주민번호, 직종, 단가, 연락처 등)를 지정한 다음달 대장으로 복사합니다. 출근 기록은 초기화됩니다.</p>
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-500 mb-1 text-[10px]">이월 대상 현장 선택</label>
+                    <select id="carryOverTargetProject" class="w-full bg-slate-50 border border-slate-200 rounded p-2 font-bold focus:ring-1 focus:ring-violet-500 outline-none text-xs"></select>
+                </div>
+                <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-[10px] text-amber-800">
+                    <p>💡 이월할 대장이 없다면 먼저 <strong>"신규 등록"</strong>으로 다음달 현장을 만들어주세요.</p>
+                </div>
+                <div id="carryOverPreview" class="text-xs text-slate-600 font-semibold"></div>
+            </div>
+            <div class="p-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-2 text-xs">
+                <button onclick="closeCarryOverModal()" class="px-4 py-2 font-medium text-slate-500 hover:text-slate-800">취소</button>
+                <button onclick="executeCarryOver()" class="bg-violet-600 hover:bg-violet-700 text-white font-bold px-4 py-2 rounded shadow-sm">✅ 이월 실행</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 팝업 모달 5: AI 자동인식 근로자 등록 (no-print) -->
+    <div id="aiScanModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center z-50 no-print">
+        <div class="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-2xl overflow-hidden max-h-[90vh] flex flex-col">
+            <div class="bg-gradient-to-r from-emerald-700 to-teal-700 text-white p-4 flex justify-between items-center shrink-0">
+                <h3 class="font-bold flex items-center gap-2">
+                    <span class="text-lg">🤖</span> AI 자동인식 근로자 등록
+                    <span class="text-[10px] bg-white/20 px-2 py-0.5 rounded-full font-normal">PDF · 이미지 파일 지원</span>
+                </h3>
+                <button onclick="closeAiScanModal()" class="text-emerald-200 hover:text-white transition-all">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            
+            <!-- 업로드 영역 -->
+            <div class="p-5 space-y-4 overflow-y-auto flex-1">
+                <div id="aiDropZone"
+                    class="border-2 border-dashed border-emerald-300 rounded-xl p-8 text-center cursor-pointer hover:border-emerald-500 hover:bg-emerald-50 transition-all"
+                    onclick="document.getElementById('aiFileInput').click()"
+                    ondragover="event.preventDefault(); this.classList.add('border-emerald-500','bg-emerald-50')"
+                    ondragleave="this.classList.remove('border-emerald-500','bg-emerald-50')"
+                    ondrop="handleAiFileDrop(event)">
+                    <div class="text-4xl mb-2">📄</div>
+                    <p class="font-bold text-slate-700 text-sm">노무비백업.pdf 또는 명단 이미지 파일을 여기에 드래그하거나 클릭하여 선택</p>
+                    <p class="text-xs text-slate-400 mt-1">지원 형식: PDF, PNG, JPG, JPEG, WEBP · 최대 10MB</p>
+                    <input type="file" id="aiFileInput" accept=".pdf,.png,.jpg,.jpeg,.webp" class="hidden" onchange="handleAiFileSelect(event)">
+                </div>
+
+                <!-- 선택된 파일 표시 -->
+                <div id="aiFileInfo" class="hidden bg-slate-50 rounded-lg p-3 flex items-center justify-between border border-slate-200">
+                    <div class="flex items-center gap-2">
+                        <span id="aiFileIcon" class="text-xl">📄</span>
+                        <div>
+                            <p id="aiFileName" class="font-bold text-slate-800 text-xs"></p>
+                            <p id="aiFileSize" class="text-[10px] text-slate-400"></p>
+                        </div>
+                    </div>
+                    <button onclick="clearAiFile()" class="text-slate-400 hover:text-red-500 transition-all">
+                        <i data-lucide="x-circle" class="w-4 h-4"></i>
+                    </button>
+                </div>
+
+                <!-- Gemini API 키 입력 -->
+                <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-2">
+                    <div class="flex items-center justify-between">
+                        <label class="block font-bold text-amber-800 text-[11px] flex items-center gap-1">🔑 Google Gemini API 키 <span class="text-red-500">*필수</span></label>
+                        <a href="https://aistudio.google.com/apikey" target="_blank" class="text-[10px] text-blue-600 hover:underline font-bold">무료 발급 →</a>
+                    </div>
+                    <div class="relative">
+                        <input type="password" id="geminiApiKey" placeholder="AIza..." class="w-full bg-white border border-amber-300 rounded p-2 text-xs font-mono focus:ring-1 focus:ring-amber-500 outline-none pr-16">
+                        <button onclick="toggleApiKeyVisibility()" class="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-slate-500 hover:text-slate-800 font-bold">표시</button>
+                    </div>
+                    <p class="text-[10px] text-amber-700">키는 이 브라우저에만 저장되며 외부로 전송되지 않습니다.</p>
+                </div>
+
+                <!-- 추가 지시사항 -->
+                <div>
+                    <label class="block font-bold text-slate-500 mb-1 text-[10px]">AI 추가 지시사항 (선택)</label>
+                    <input type="text" id="aiExtraInstruction" placeholder="예: 직종은 모두 &quot;보통인부&quot;로, 단가는 180,000원으로 설정해줘" class="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs focus:ring-1 focus:ring-emerald-500 outline-none">
+                </div>
+
+                <!-- AI 분석 중 상태 -->
+                <div id="aiLoadingArea" class="hidden text-center py-4">
+                    <div class="inline-flex items-center gap-3 bg-emerald-50 px-5 py-3 rounded-xl border border-emerald-200">
+                        <div class="w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+                        <span class="font-bold text-emerald-700 text-sm" id="aiLoadingText">AI가 문서를 분석하고 있습니다...</span>
+                    </div>
+                </div>
+
+                <!-- AI 인식 결과 미리보기 -->
+                <div id="aiResultArea" class="hidden">
+                    <div class="flex items-center justify-between mb-2">
+                        <h4 class="font-bold text-slate-700 text-xs flex items-center gap-1.5">
+                            <i data-lucide="check-circle" class="w-4 h-4 text-emerald-500"></i>
+                            AI 인식 결과 미리보기
+                            <span id="aiResultCount" class="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold"></span>
+                        </h4>
+                        <button onclick="editAiResult()" class="text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold px-2 py-1 rounded transition-all">✏️ 결과 편집</button>
+                    </div>
+                    <div class="bg-slate-50 rounded-lg border border-slate-200 overflow-hidden">
+                        <div class="overflow-x-auto max-h-64">
+                            <table class="w-full text-[11px] text-left">
+                                <thead class="bg-slate-200 text-slate-700 font-bold sticky top-0">
+                                    <tr>
+                                        <th class="p-2 border-r border-slate-300 w-8">NO</th>
+                                        <th class="p-2 border-r border-slate-300 w-20">성명</th>
+                                        <th class="p-2 border-r border-slate-300 w-32">주민번호</th>
+                                        <th class="p-2 border-r border-slate-300 w-24">직종</th>
+                                        <th class="p-2 border-r border-slate-300 w-20">연락처</th>
+                                        <th class="p-2 border-r border-slate-300 w-28">주소</th>
+                                        <th class="p-2 w-20">단가</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="aiPreviewBody" class="divide-y divide-slate-200"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div id="aiResultEditArea" class="hidden mt-3">
+                        <label class="block font-bold text-slate-500 mb-1 text-[10px]">결과 JSON 직접 편집</label>
+                        <textarea id="aiResultJson" rows="8" class="w-full bg-slate-50 border border-slate-200 rounded p-2 font-mono text-[10px] focus:ring-1 focus:ring-emerald-500 outline-none"></textarea>
+                        <button onclick="applyEditedResult()" class="mt-1 text-[10px] bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1 rounded transition-all">편집 내용 반영</button>
+                    </div>
+                </div>
+
+                <!-- 에러 표시 -->
+                <div id="aiErrorArea" class="hidden bg-red-50 border border-red-200 rounded-lg p-3">
+                    <p class="text-red-700 font-bold text-xs flex items-center gap-1.5">
+                        <i data-lucide="alert-circle" class="w-4 h-4"></i>
+                        <span id="aiErrorMsg">오류가 발생했습니다.</span>
+                    </p>
+                </div>
+            </div>
+
+            <div class="p-4 bg-slate-50 border-t border-slate-100 flex justify-between items-center gap-2 text-xs shrink-0">
+                <button onclick="startAiScan()" id="aiScanBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-5 py-2 rounded shadow-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
+                    🤖 AI 분석 시작
+                </button>
+                <div class="flex gap-2">
+                    <button onclick="closeAiScanModal()" class="px-4 py-2 font-medium text-slate-500 hover:text-slate-800">닫기</button>
+                    <button onclick="registerAiResults()" id="aiRegisterBtn" class="hidden bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 rounded shadow-sm">✅ 대장에 등록</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 드래그 범위 기입 — 화면 우하단 플로팅 패널 (테이블 조작을 막지 않음) -->
+    <div id="dragRangePanel" class="fixed bottom-16 right-5 hidden z-40 no-print">
+        <div class="bg-white rounded-xl shadow-2xl border-2 border-orange-400 w-64 overflow-hidden">
+            <div class="bg-gradient-to-r from-orange-500 to-amber-500 text-white px-3 py-2 flex justify-between items-center">
+                <span class="font-bold text-xs flex items-center gap-1.5">
+                    <span class="inline-block w-2 h-2 rounded-full bg-white animate-pulse"></span>
+                    드래그 범위 기입 ON
+                </span>
+                <button onclick="closeDragRangeModal()" class="text-orange-100 hover:text-white text-[11px] font-bold">✕ 종료</button>
+            </div>
+            <div class="p-3 space-y-2 text-xs">
+                <p class="text-slate-500 leading-snug">출근 셀을 <strong class="text-orange-600">클릭한 채 드래그</strong>하면 지나간 셀에 아래 값이 기입됩니다.</p>
+                <div class="grid grid-cols-3 gap-1.5">
+                    <label class="flex items-center justify-center gap-1 border rounded py-1.5 cursor-pointer font-bold text-[11px] transition-all" id="dragLbl1">
+                        <input type="radio" name="dragValue" value="1" checked class="accent-orange-500" onchange="updateDragLabels()"> 1.0
+                    </label>
+                    <label class="flex items-center justify-center gap-1 border rounded py-1.5 cursor-pointer font-bold text-[11px] transition-all" id="dragLbl05">
+                        <input type="radio" name="dragValue" value="0.5" class="accent-orange-500" onchange="updateDragLabels()"> 0.5
+                    </label>
+                    <label class="flex items-center justify-center gap-1 border rounded py-1.5 cursor-pointer font-bold text-[11px] transition-all" id="dragLbl0">
+                        <input type="radio" name="dragValue" value="0" class="accent-orange-500" onchange="updateDragLabels()"> 0 삭제
+                    </label>
+                </div>
+                <div id="dragRangeStatus" class="text-center text-orange-600 font-bold py-0.5 hidden">
+                    🖱 드래그 중 — <span id="dragRangeCount"></span>칸 선택
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="toast" class="fixed bottom-5 right-5 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-2 transform translate-y-10 opacity-0 transition-all duration-300 z-50 text-xs font-semibold">
+        <i data-lucide="check-circle-2" class="text-emerald-400 w-4 h-4"></i>
+        <span id="toastMessage">작업이 저장되었습니다.</span>
+    </div>
+
+    <!-- 커스텀 알림/확인 모달 (alert & confirm 대체) -->
+    <div id="customAlertModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center z-[100] no-print">
+        <div class="bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-sm overflow-hidden p-5 space-y-4">
+            <div class="flex items-center gap-2.5 text-amber-500">
+                <i data-lucide="alert-triangle" class="w-5 h-5"></i>
+                <h4 class="font-bold text-slate-900" id="alertTitle">시스템 알림</h4>
+            </div>
+            <p class="text-slate-600 leading-relaxed font-sans" id="alertMessage">이 작업을 진행하시겠습니까?</p>
+            <div class="flex justify-end gap-2 text-xs">
+                <button id="alertCancelBtn" class="px-3.5 py-1.5 font-semibold text-slate-500 hover:bg-slate-100 rounded">취소</button>
+                <button id="alertConfirmBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-1.5 rounded shadow-sm">확인</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 임포턴트 스타일 오버라이드를 위한 동적 스타일 블록 -->
+    <style id="zoomStyles"></style>
+    <style id="densityStyles"></style>
+
+    <!-- 데이터 스크립트 작성 -->
+    <script src="js/state.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/storage.js"></script>
+    <script src="js/layout.js"></script>
+    <script src="js/render.js"></script>
+    <script src="js/labor-detail.js"></script>
+    <script src="js/exports.js"></script>
+    <script src="js/attendance.js"></script>
+    <script src="js/print-table.js"></script>
+    <script src="js/documents.js"></script>
+    <script src="js/labor-actions.js"></script>
+    <script src="js/calculations.js"></script>
+    <script src="js/projects.js"></script>
+    <script src="js/roster-photos.js"></script>
+    <script src="js/project-create.js"></script>
+    <script src="js/xls-backup-insurance.js"></script>
+    <script src="js/carry-over.js"></script>
+    <script src="js/ai-scan.js"></script>
+
+</body>
+</html>
